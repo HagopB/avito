@@ -61,7 +61,7 @@ if __name__ == '__main__':
     
     with ZipFile(zip_path) as myzip:
         files_in_zip = myzip.namelist()
-        for idx, file in enumerate(tqdm(files_in_zip[150001:])):
+        for idx, file in enumerate(tqdm(files_in_zip[1:])):
             try:
                 with myzip.open(file) as myfile:
                     img = Image.open(myfile)
