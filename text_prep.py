@@ -8,6 +8,14 @@ from collections import Counter
 from keras.preprocessing import sequence, text
 from nltk.tokenize.toktok import ToktokTokenizer # tokenizer tested on russian
 from nltk import sent_tokenize # should be multilingual
+from string import punctuation
+from nltk import sent_tokenize
+from nltk.corpus import stopwords
+
+
+russian_stops = stopwords.open('russian').read().splitlines()
+def filter_params(param):
+    return [w.lower() for w in param.split() if w.lower() not in russian_stops ]
 
 
 class Preparator():
@@ -33,12 +41,14 @@ class Preparator():
 
     def clean_col(self, column, data):
         punct = "!#$«%&\'.()*+-<=>?@[\\]^_`°{|}"
-        spec = "/"
-
+        spec = "/\n"
+        digits = "\d"
         regex = re.compile('[%s]' % re.escape(punct))
         regexspec = re.compile('[%s]' % re.escape(spec))
+        digits = re.compile(digits)
         toktok = ToktokTokenizer()
         res = data[column].fillna("__NA__").map(lambda sent: regex.sub("", sent))\
+                                            .map(lambda sent: digits.sub("#", sent))\
                                             .map(lambda sent: regexspec.sub(" ", sent))\
                                             .map(lambda sent: toktok.tokenize(sent.lower())).tolist()
         return res
@@ -118,3 +128,38 @@ class Preparator():
               .format(c, len(vocab.items()), round(c/len(vocab), 2) ))
         
         return embedding_matrix, no_vectors
+
+    def filter_params(param):
+            return [w.lower() for w in param.split() if w.lower() not in russian_stops]
+
+    def prep_data(self, dataset):
+        na_cols = ["description", "title", "param_1", "param_2", "param_3"]
+        dataset[na_cols] = dataset[na_cols].fillna('__NA__')
+        dataset[['price', "image_top_1"]] = dataset[['price', "image_top_1"]].fillna(dataset['price'].median())
+        regex = re.compile('[%s]' % re.escape(punctuation))
+        struct = "/\n✔;"
+        struct = re.compile('[%s]' % re.escape(struct))
+
+
+        dataset['price'] = dataset['price'].fillna(dataset['price'].median())
+        dataset[["description", "title"]] = dataset[["description", "title"]].fillna('__NA__')
+        dataset["text"] = dataset.apply(lambda x: x["title"] + " END_DESC " + x["description"], axis=1)
+        dataset["text_len"] = dataset.text.map(len)
+        dataset["nb_words"] = dataset.text.map(lambda x: len(x.split()))
+        dataset["nb_sents"] = dataset.text.map(lambda x: len(sent_tokenize(x)))
+        dataset["nb_punct"] = dataset.text.map(lambda x: len(regex.findall(x)))
+        dataset["words_price"] = dataset.apply(lambda x: x['price']/x["nb_words"], axis = 1 ) # longer description for more expensive products
+        # ex a long description for flat is more important than for shoes..
+
+        dataset['structure'] = dataset.text.map(lambda x: len(struct.findall(x))/len(x)) # structured text (bullet points carriage, returns etc..)
+        #ex: dataset.loc[451,"description"]
+        dataset["digits_count"] = dataset.text.map(lambda x: len(re.findall("\d+", x))/len(x))
+        dataset["dayofweek"]= pd.DatetimeIndex(dataset.activation_date).dayofweek
+        return dataset
+
+    def encode_embedding(self, column, train, test):
+        unique_cat = list(train[column].unique()) + list(test[column].unique()) 
+        index2cat = {c: i for c, i in enumerate(unique_cat)}
+        cat2index = {v: k for k, v in index2cat.items()}
+        data_col = np.array(train[column].map(cat2index), dtype = np.int64)
+        return len(unique_cat), data_col
