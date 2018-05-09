@@ -27,11 +27,13 @@ class Pipeline():
 			self.conf.data_prep.max_vocab,			
 			self.conf.data_prep.max_char)
 
+		print("Vocab lookup...")
 		train_indexed = self.pr.vocab_lookup(train_text, vocab,  char_vocab)
 		test_indexed = self.pr.vocab_lookup(test_text, vocab,  char_vocab)
 
 		mat, novect = self.pr.build_emb(vectors, vocab, self.conf.data_prep.emb_dim)
 
+		print("Encode embedding...")
 		cat_s_tr, cat_d_tr = self.prepare_cat_embeddings(self.train, self.test)
 		cat_s_ts, cat_d_ts = self.prepare_cat_embeddings(self.test, self.train)
 		
@@ -54,6 +56,7 @@ class Pipeline():
 		test_cont['cat_s'] = cat_s_ts
 		test_cont['cat_d'] = cat_d_ts
 
+		del train_indexed, other_feat_tr, cat_s_tr, cat_d_tr, test_indexed, other_feat_ts, cat_s_ts, cat_d_ts
 		target = np.array(self.train.deal_probability)
 
 		return vocab, mat, train_cont, test_cont, target
