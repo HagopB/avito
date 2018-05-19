@@ -12,12 +12,13 @@ script_path = os.getcwd()
 conf_file = os.path.join(script_path, config_file_name)
 conf = AutoConfig(conf_file)
 
+
+print("loading data...")
 vocab = pickle.load(open(os.path.join(conf.path.tmp_path, "vocab"), "rb"))
 mat = pickle.load(open(os.path.join(conf.path.tmp_path, "mat"), "rb"))
 train_cont = pickle.load(open(os.path.join(conf.path.tmp_path, "train_cont"), "rb"))
 test_cont = pickle.load(open(os.path.join(conf.path.tmp_path, "test_cont"), "rb"))
 target = pickle.load(open(os.path.join(conf.path.tmp_path, "target"), "rb"))
-
 
 padded_words = sequence.pad_sequences(train_cont['indexes']["word_id"], maxlen = conf.data_prep.pad_len_word)
 padded_test = sequence.pad_sequences(test_cont['indexes']["word_id"], maxlen = conf.data_prep.pad_len_word)
@@ -141,10 +142,6 @@ model.compile(loss='mean_squared_error', #mean squared error might drop to 0 fas
 #early_stopping = EarlyStopping(monitor='val_rmse', min_delta=0.01, patience=7, verbose=1)
 #callbacks_list = [early_stopping]
 
-
-
-
-target = np.array(train.deal_probability)
 
 hist = model.fit(train_cont['cat_d']['cat_data'] + train_cont['cat_d']["parent_data"] +\
                  train_cont['cat_d']["region_data"] + train_cont['cat_d']["city_data"] + train_cont['cat_d']["image_data"] +\
