@@ -24,6 +24,7 @@ from pipeline import Pipeline
 pi = Pipeline(conf, train, test)
 vocab, mat, train_cont, test_cont, target = pi.pipe()
 
+print("saving preprocessing in {}".format(conf.path.tmp_path))
 if not os.path.exists(conf.path.tmp_path):
 	os.mkdir(conf.path.tmp_path)
 

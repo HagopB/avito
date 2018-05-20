@@ -20,8 +20,16 @@ train_cont = pickle.load(open(os.path.join(conf.path.tmp_path, "train_cont"), "r
 test_cont = pickle.load(open(os.path.join(conf.path.tmp_path, "test_cont"), "rb"))
 target = pickle.load(open(os.path.join(conf.path.tmp_path, "target"), "rb"))
 
-padded_words = sequence.pad_sequences(train_cont['indexes']["word_id"], maxlen = conf.data_prep.pad_len_word)
-padded_test = sequence.pad_sequences(test_cont['indexes']["word_id"], maxlen = conf.data_prep.pad_len_word)
+pad_value = len(vocab) 
+
+print(pad_value)
+print(mat.shape)
+padded_words = sequence.pad_sequences(train_cont['indexes']["word_id"],
+      maxlen = conf.data_prep.pad_len_word, 
+      value = pad_value)
+padded_test = sequence.pad_sequences(test_cont['indexes']["word_id"],
+      maxlen = conf.data_prep.pad_len_word,
+      value = pad_value)
 
 
 import keras
@@ -73,7 +81,7 @@ user_cat_input = Input((1, ))
 day_cat_input = Input((1, ))
 
 
-m = Embedding(input_dim = conf.data_prep.max_vocab + 1 ,
+m = Embedding(input_dim = conf.data_prep.max_vocab + 2 ,
               output_dim =  conf.data_prep.emb_dim,
               weights=[mat],
               input_length=conf.data_prep.pad_len_word,
@@ -149,7 +157,7 @@ hist = model.fit(train_cont['cat_d']['cat_data'] + train_cont['cat_d']["parent_d
                  [padded_words] ,
                  target,
                  batch_size=conf.modelling.batch_size,
-                 epochs=3,# conf.modelling.num_epochs
+                 epochs= conf.modelling.num_epochs, 
                  validation_split = 0.1,
                  shuffle=True,
                  verbose=2, 
@@ -169,5 +177,5 @@ preds = model.predict(
 
 from utils import write_output, plot_history
 
-plot_history(hist)
 write_output(preds, conf)
+plot_history(hist, conf, preds, target, save = True)

@@ -33,7 +33,7 @@ class Pipeline():
 		print("Vocab lookup...")
 		train_indexed = self.pr.vocab_lookup(train_text, vocab,  char_vocab)
 		test_indexed = self.pr.vocab_lookup(test_text, vocab,  char_vocab)
-
+		print("building embedding matrix s..")
 		mat, novect = self.pr.build_emb(vectors, vocab,
 										self.conf.data_prep.emb_dim,
 			 							self.conf.data_prep.model_path)

@@ -1,4 +1,5 @@
 import os
+import numpy as np
 import pandas as pd
 
 def post_process(pred):
@@ -8,7 +9,7 @@ def post_process(pred):
     elif pred < 0:
         return 0
     else:
-        return pred
+        return float(pred)
 
 def post_softmax(preds):
     return None
@@ -26,8 +27,10 @@ def write_output(preds, conf):
     sub_path = os.path.join(conf.path.output_path, "submission.csv")
     sub.to_csv(sub_path, index = False)
 
-def plot_history(hist, save=False):
+def plot_history(hist, conf, preds ,target ,save=False):
     import matplotlib.pyplot as plt
+    import seaborn as sns
+
     f, (ax1, ax2) = plt.subplots(1, 2, figsize = (12, 4))
     ax1.plot(hist.history['rmse'], lw=2.0, color='b', label='train')
     ax1.plot(hist.history['val_rmse'], lw=2.0, color='r', label='val')
@@ -46,7 +49,26 @@ def plot_history(hist, save=False):
     ax2.set_ylabel('loss')
     ax2.legend(loc='upper right')
 
+    preds = preds.flatten()
+    f2, (ax1, ax2) = plt.subplots(1, 2, figsize = (12, 4))
+
+    pp = np.vectorize(post_process)
+    ax1.scatter(list(range(len(preds))), preds)
+    sns.distplot([post_process(p) for p in preds], hist= False, label = "preds", ax = ax2)
+    sns.distplot(target, hist= False , label = "train", ax = ax2)
+
+    ax1.set_title('Distri raw')
+    ax1.set_xlabel('n obs')
+    ax1.set_ylabel('proba')
+
+    ax2.set_title('Distri post')
+    ax2.set_xlabel('n obs')
+    ax2.set_ylabel('proba')
+    ax2.legend(loc='upper right')
     if save:
-        f.savefig("training_plot.pdf")
+        f.savefig(os.path.join(conf.path.output_path, "training_plot.pdf"))
+        f2.savefig(os.path.join(conf.path.output_path, "dist_plot.pdf"))
     else:
+
         f.show()
+        f2.show()

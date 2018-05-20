@@ -58,6 +58,7 @@ class Preparator():
 
     def create_vocab(self, sample_tok, max_word=25000, max_char=125, word_lower=True):
         UNK = "_UNK_"
+        PAD = "_PAD_"
         # vocab
         word_counter = Counter()
         char_counter = Counter()
@@ -74,8 +75,11 @@ class Preparator():
         # vocab size limit
         word_vocab = {t[0] : i for i,t in enumerate(word_counter.most_common(max_word-1))}
         word_vocab[UNK] = len(word_vocab.keys()) + 1
+        word_vocab[PAD] = len(word_vocab.keys()) + 2
+
         char_vocab = {t[0] : i for i,t in enumerate(word_counter.most_common(max_word-1))}
         char_vocab[UNK] = len(char_vocab.keys()) + 1
+        char_vocab[PAD] = len(char_vocab.keys()) + 2
         return word_vocab, char_vocab
 
     from itertools import chain
@@ -118,7 +122,7 @@ class Preparator():
 
         mat = []
         no_vectors = {}
-        embedding_matrix = np.zeros((len(vocab.keys()) +1, embdim)) 
+        embedding_matrix = np.zeros((len(vocab.keys()) + 1, embdim)) 
         c=0
         for i, (word, idx) in enumerate(vocab.items()):
                 if model_path:
