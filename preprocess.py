@@ -20,6 +20,7 @@ train = pd.read_csv(train_path,compression="zip", nrows = conf.data_prep.nrows)
 test = pd.read_csv(test_path,compression="zip", nrows = conf.data_prep.nrows)
 
 from pipeline import Pipeline
+
 pi = Pipeline(conf, train, test)
 vocab, mat, train_cont, test_cont, target = pi.pipe()
 

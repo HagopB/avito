@@ -10,9 +10,12 @@ class Pipeline():
 		self.pr = Preparator()
 
 	def pipe(self):
-		print("loading vectors..")
-		vectors = self.pr.load_vectors(self.conf.path.word_vectors_path,
-								  self.conf.data_prep.n_vectors)
+		if not self.conf.data_prep.model_path:
+			print("loading vectors..")
+			vectors = self.pr.load_vectors(self.conf.path.word_vectors_path,
+									  self.conf.data_prep.n_vectors)
+		else:
+			vectors = None
 
 		print("preparing data...")
 		self.train = self.pr.prep_data(self.train)
@@ -31,7 +34,9 @@ class Pipeline():
 		train_indexed = self.pr.vocab_lookup(train_text, vocab,  char_vocab)
 		test_indexed = self.pr.vocab_lookup(test_text, vocab,  char_vocab)
 
-		mat, novect = self.pr.build_emb(vectors, vocab, self.conf.data_prep.emb_dim)
+		mat, novect = self.pr.build_emb(vectors, vocab,
+										self.conf.data_prep.emb_dim,
+			 							self.conf.data_prep.model_path)
 
 		print("Encode embedding...")
 		cat_s_tr, cat_d_tr = self.prepare_cat_embeddings(self.train, self.test)

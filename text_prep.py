@@ -11,6 +11,7 @@ from nltk import sent_tokenize # should be multilingual
 from string import punctuation
 from nltk import sent_tokenize
 from nltk.corpus import stopwords
+from gensim.models import FastText
 
 
 russian_stops = stopwords.open('russian').read().splitlines()
@@ -111,13 +112,22 @@ class Preparator():
             sample['char_id'] = char_vec
             return sample
 
-    def build_emb(self, vectors, vocab, embdim = 300):
+    def build_emb(self, vectors, vocab, embdim = 300, model_path = None):
+        if model_path:
+            ft = FastText.load_fasttext_format(model_path)
+
         mat = []
         no_vectors = {}
         embedding_matrix = np.zeros((len(vocab.keys()) +1, embdim)) 
         c=0
         for i, (word, idx) in enumerate(vocab.items()):
-                vect = vectors.get(word)
+                if model_path:
+                    try:
+                        vect = ft[word]
+                    except:
+                        vect = None
+                else:
+                    vect = vectors.get(word)
 
                 if vect is not None and len(vect)>0:
                     embedding_matrix[i] = vect
