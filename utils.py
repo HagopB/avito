@@ -53,9 +53,9 @@ def plot_history(hist, conf, preds ,target ,save=False):
     f2, (ax1, ax2) = plt.subplots(1, 2, figsize = (12, 4))
 
     pp = np.vectorize(post_process)
-    ax1.scatter(list(range(len(preds))), preds)
-    sns.distplot([post_process(p) for p in preds], hist= False, label = "preds", ax = ax2)
-    sns.distplot(target, hist= False , label = "train", ax = ax2)
+    sns.distplot(preds, hist= True, label = "preds", ax = ax1)
+    sns.distplot([post_process(p) for p in preds], hist= True, label = "preds", ax = ax2)
+    sns.distplot(target, hist= True , label = "train", ax = ax2)
 
     ax1.set_title('Distri raw')
     ax1.set_xlabel('n obs')

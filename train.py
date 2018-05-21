@@ -1,6 +1,7 @@
 import os
 import pickle
 import pandas as pd
+import numpy as np
 
 from keras.preprocessing import sequence 
 from autoconfig import AutoConfig
@@ -22,14 +23,23 @@ target = pickle.load(open(os.path.join(conf.path.tmp_path, "target"), "rb"))
 
 pad_value = len(vocab) 
 
-print(pad_value)
-print(mat.shape)
+
 padded_words = sequence.pad_sequences(train_cont['indexes']["word_id"],
       maxlen = conf.data_prep.pad_len_word, 
       value = pad_value)
 padded_test = sequence.pad_sequences(test_cont['indexes']["word_id"],
       maxlen = conf.data_prep.pad_len_word,
       value = pad_value)
+
+print("Setting category embdeddings dimensions with ratio {}".format(conf.modelling.emb_ratio))
+
+cat_dim = round(np.unique(train_cont["cat_d"]["cat_data"][0]).shape[0] * conf.modelling.emb_ratio)
+city_dim = round(np.unique(train_cont["cat_d"]["city_data"][0]).shape[0] * conf.modelling.emb_ratio)
+day_dim = round(np.unique(train_cont["cat_d"]["day_data"][0]).shape[0] * conf.modelling.emb_ratio)
+img_dim = round(np.unique(train_cont["cat_d"]["image_data"][0]).shape[0] * conf.modelling.emb_ratio)
+parent_dim = round(np.unique(train_cont["cat_d"]["parent_data"][0]).shape[0] * conf.modelling.emb_ratio)
+region_dim = round(np.unique(train_cont["cat_d"]["region_data"][0]).shape[0] * conf.modelling.emb_ratio)
+user_dim = round(np.unique(train_cont["cat_d"]["user_data"][0]).shape[0] * conf.modelling.emb_ratio)
 
 
 import keras
@@ -47,6 +57,7 @@ from keras.callbacks import EarlyStopping
 from keras.initializers import RandomUniform
 
 import numpy as np
+
 
 def CatEmbLayer(nb_category, CATEGORY_EMB_DIM,
                 input_of_layer, drop_out = 0.2):
@@ -87,25 +98,29 @@ m = Embedding(input_dim = conf.data_prep.max_vocab + 2 ,
               input_length=conf.data_prep.pad_len_word,
               trainable=False)(text_input)
 
-m = Dropout(0.5)(m)
-m = Conv1D(int(conf.modelling.num_filters),
-           int(conf.modelling.filter_size),
-           activation='relu', padding='same')(m)
+m = Dropout(conf.modelling.first_dropout)(m)
+
+m = Conv1D(conf.modelling.num_filters_first,
+           conf.modelling.filter_size,
+           activation='relu', padding='same',
+           dilation_rate = conf.modelling.dilation_rate)(m)
 
 m = AveragePooling1D(2)(m)
 
-m = Conv1D(conf.modelling.num_filters - 4, conf.modelling.filter_size,
+m = Conv1D(conf.modelling.num_filters_second, conf.modelling.filter_size,
            activation='relu',
-           padding='same')(m)
+           padding='same',
+           dilation_rate = conf.modelling.dilation_rate)(m)
+
 m = GlobalAveragePooling1D()(m)
 
-category_emb = CatEmbLayer(train_cont['cat_s']['cat'], conf.modelling.category_emb_dim, category_input)
-parent_cat_emb = CatEmbLayer(train_cont['cat_s']["parent_cat"], conf.modelling.category_emb_dim, parent_cat_input)
-region_cat_emb = CatEmbLayer(train_cont['cat_s']["region_cat"], conf.modelling.category_emb_dim, region_cat_input)
-city_cat_emb = CatEmbLayer(train_cont['cat_s']["city_cat"], conf.modelling.category_emb_dim, city_cat_input)
-image_cat_emb = CatEmbLayer(train_cont['cat_s']["image_cat"], conf.modelling.category_emb_dim, image_cat_input)
-user_cat_emb = CatEmbLayer(train_cont['cat_s']["user_cat"], conf.modelling.category_emb_dim, user_cat_input)
-day_cat_emb = CatEmbLayer(train_cont['cat_s']["day_cat"], conf.modelling.category_emb_dim, day_cat_input)
+category_emb = CatEmbLayer(train_cont['cat_s']['cat'], cat_dim, category_input)
+parent_cat_emb = CatEmbLayer(train_cont['cat_s']["parent_cat"], parent_dim, parent_cat_input)
+region_cat_emb = CatEmbLayer(train_cont['cat_s']["region_cat"], region_dim, region_cat_input)
+city_cat_emb = CatEmbLayer(train_cont['cat_s']["city_cat"], city_dim, city_cat_input)
+image_cat_emb = CatEmbLayer(train_cont['cat_s']["image_cat"], img_dim, image_cat_input)
+user_cat_emb = CatEmbLayer(train_cont['cat_s']["user_cat"], user_dim, user_cat_input)
+day_cat_emb = CatEmbLayer(train_cont['cat_s']["day_cat"], day_dim, day_cat_input)
 
 m = concatenate([category_emb,
                  parent_cat_emb,
@@ -119,29 +134,25 @@ m = concatenate([category_emb,
 
 m = BatchNormalization()(m)
 
-m = Dense(35, activation='relu')(m)
+m = Dense(conf.modelling.first_dense, activation='relu')(m)
 
-m = Dropout(0.1)(m)
+m = Dropout(conf.modelling.last_dropout)(m)
 
-m = Dense(5, activation='relu', kernel_regularizer=regularizers.l2(conf.modelling.weight_decay))(m)
+m = Dense(conf.modelling.second_dense, activation='relu', kernel_regularizer=regularizers.l2(conf.modelling.weight_decay))(m)
 
 output = Dense(1)(m)
 
+inputs = [category_input, parent_cat_input, region_cat_input, city_cat_input, image_cat_input, user_cat_input,
+          day_cat_input, other_feat_input, text_input]
 
-model = Model(inputs=[category_input,
-                      parent_cat_input,
-                      region_cat_input,
-                      city_cat_input,
-                      image_cat_input,
-                      user_cat_input,
-                      day_cat_input,
-                      other_feat_input,
-                      text_input] , 
+model = Model(inputs=inputs , 
               outputs= output,
               name='sec_model')
-adam = optimizers.Adam(lr=0.0001, beta_1=0.9,
-                       beta_2=0.999, epsilon=1e-08,
-                       decay=0.01, clipnorm=2.)
+
+adam = optimizers.Adam(lr=conf.optimizer.lr, beta_1=conf.optimizer.beta_1,
+                       beta_2=conf.optimizer.beta_2,
+                       decay=conf.optimizer.decay, clipnorm=conf.optimizer.clip)
+
 model.compile(loss='mean_squared_error', #mean squared error might drop to 0 faster than expected
               optimizer=adam,
               metrics=[rmse, "mae"])
@@ -150,11 +161,12 @@ model.compile(loss='mean_squared_error', #mean squared error might drop to 0 fas
 #early_stopping = EarlyStopping(monitor='val_rmse', min_delta=0.01, patience=7, verbose=1)
 #callbacks_list = [early_stopping]
 
+data = train_cont['cat_d']['cat_data'] + train_cont['cat_d']["parent_data"] +\
+       train_cont['cat_d']["region_data"] + train_cont['cat_d']["city_data"] + train_cont['cat_d']["image_data"] +\
+       train_cont['cat_d']["user_data"] + train_cont['cat_d']["day_data"] + train_cont["other_feat"]  + \
+       [padded_words] 
 
-hist = model.fit(train_cont['cat_d']['cat_data'] + train_cont['cat_d']["parent_data"] +\
-                 train_cont['cat_d']["region_data"] + train_cont['cat_d']["city_data"] + train_cont['cat_d']["image_data"] +\
-                 train_cont['cat_d']["user_data"] + train_cont['cat_d']["day_data"] + train_cont["other_feat"]  + \
-                 [padded_words] ,
+hist = model.fit(data,
                  target,
                  batch_size=conf.modelling.batch_size,
                  epochs= conf.modelling.num_epochs, 
