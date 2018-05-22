@@ -23,8 +23,8 @@ class Pipeline():
 		
 
 		print("cleaning text...")
-		train_text = self.pr.clean_col("text", self.train)
-		test_text = self.pr.clean_col("text", self.test)
+		train_text = self.pr.clean_col("text", self.train, self.conf.data_prep.stem)
+		test_text = self.pr.clean_col("text", self.test, self.conf.data_prep.stem)
 
 		vocab, char_vocab = self.pr.create_vocab(train_text + test_text,
 			self.conf.data_prep.max_vocab,			
@@ -68,7 +68,7 @@ class Pipeline():
 
 	def prepare_cat_embeddings(self, data, test):
 		to_emb = ["category_name", "parent_category_name", "region", "city",
-		"image_top_1", "user_type", "dayofweek"]
+		"image_top_1", "user_type", "dayofweek", "param_1","param_2", "param_3"]
 		emb_cols = [self.pr.encode_embedding(col, data, test) for col in to_emb]
 		sizes, datasets = zip(*emb_cols)
 
@@ -76,7 +76,7 @@ class Pipeline():
 		cat_s = {}
 		cat_d = {}
 
-		cat_s["cat"], cat_s["parent_cat"], cat_s["region_cat"], cat_s["city_cat"], cat_s["image_cat"], cat_s["user_cat"], cat_s["day_cat"] = sizes
-		cat_d["cat_data"], cat_d["parent_data"], cat_d["region_data"], cat_d["city_data"], cat_d["image_data"], cat_d["user_data"], cat_d["day_data"] = datasets
+		cat_s["cat"], cat_s["parent_cat"], cat_s["region_cat"], cat_s["city_cat"], cat_s["image_cat"], cat_s["user_cat"], cat_s["day_cat"] , cat_s["param_1"], cat_s["param_2"], cat_s["param_3"]= sizes
+		cat_d["cat_data"], cat_d["parent_data"], cat_d["region_data"], cat_d["city_data"], cat_d["image_data"], cat_d["user_data"], cat_d["day_data"], cat_d["param_1"], cat_d["param_2"], cat_d["param_3"] = datasets
 		return cat_s, cat_d
 

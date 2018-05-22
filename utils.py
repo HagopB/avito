@@ -2,6 +2,13 @@ import os
 import numpy as np
 import pandas as pd
 
+def find_emb_dim(ratio, max_emb, data):
+    dim = round(np.unique(data).shape[0] * ratio)
+    if dim > max_emb:
+        return max_emb
+    else:
+        return dim
+
 def post_process(pred):
     # simple post processing
     if pred > 1:

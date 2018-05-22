@@ -3,6 +3,7 @@ import pickle
 import pandas as pd
 import numpy as np
 
+from utils import find_emb_dim
 from keras.preprocessing import sequence 
 from autoconfig import AutoConfig
 
@@ -33,13 +34,16 @@ padded_test = sequence.pad_sequences(test_cont['indexes']["word_id"],
 
 print("Setting category embdeddings dimensions with ratio {}".format(conf.modelling.emb_ratio))
 
-cat_dim = round(np.unique(train_cont["cat_d"]["cat_data"][0]).shape[0] * conf.modelling.emb_ratio)
-city_dim = round(np.unique(train_cont["cat_d"]["city_data"][0]).shape[0] * conf.modelling.emb_ratio)
-day_dim = round(np.unique(train_cont["cat_d"]["day_data"][0]).shape[0] * conf.modelling.emb_ratio)
-img_dim = round(np.unique(train_cont["cat_d"]["image_data"][0]).shape[0] * conf.modelling.emb_ratio)
-parent_dim = round(np.unique(train_cont["cat_d"]["parent_data"][0]).shape[0] * conf.modelling.emb_ratio)
-region_dim = round(np.unique(train_cont["cat_d"]["region_data"][0]).shape[0] * conf.modelling.emb_ratio)
-user_dim = round(np.unique(train_cont["cat_d"]["user_data"][0]).shape[0] * conf.modelling.emb_ratio)
+cat_dim = find_emb_dim(conf.modelling.emb_ratio, conf.modelling.max_emb_dim ,train_cont["cat_d"]["cat_data"][0])
+city_dim = find_emb_dim(conf.modelling.emb_ratio, conf.modelling.max_emb_dim ,train_cont["cat_d"]["city_data"][0])
+day_dim = find_emb_dim(conf.modelling.emb_ratio, conf.modelling.max_emb_dim ,train_cont["cat_d"]["day_data"][0])
+img_dim = find_emb_dim(conf.modelling.emb_ratio, conf.modelling.max_emb_dim ,train_cont["cat_d"]["image_data"][0])
+parent_dim = find_emb_dim(conf.modelling.emb_ratio, conf.modelling.max_emb_dim ,train_cont["cat_d"]["parent_data"][0])
+region_dim = find_emb_dim(conf.modelling.emb_ratio, conf.modelling.max_emb_dim ,train_cont["cat_d"]["region_data"][0])
+user_dim = find_emb_dim(conf.modelling.emb_ratio, conf.modelling.max_emb_dim ,train_cont["cat_d"]["user_data"][0])
+param_1_dim = find_emb_dim(conf.modelling.emb_ratio, conf.modelling.max_emb_dim ,train_cont["cat_d"]["param_1"][0])
+param_2_dim = find_emb_dim(conf.modelling.emb_ratio, conf.modelling.max_emb_dim ,train_cont["cat_d"]["param_2"][0])
+param_3_dim = find_emb_dim(conf.modelling.emb_ratio, conf.modelling.max_emb_dim ,train_cont["cat_d"]["param_3"][0])
 
 
 import keras
@@ -90,6 +94,9 @@ city_cat_input = Input((1, ))
 image_cat_input = Input((1, ))
 user_cat_input = Input((1, ))
 day_cat_input = Input((1, ))
+param_1_input = Input((1, ))
+param_2_input = Input((1, ))
+param_3_input = Input((1, ))
 
 
 m = Embedding(input_dim = conf.data_prep.max_vocab + 2 ,
@@ -121,6 +128,9 @@ city_cat_emb = CatEmbLayer(train_cont['cat_s']["city_cat"], city_dim, city_cat_i
 image_cat_emb = CatEmbLayer(train_cont['cat_s']["image_cat"], img_dim, image_cat_input)
 user_cat_emb = CatEmbLayer(train_cont['cat_s']["user_cat"], user_dim, user_cat_input)
 day_cat_emb = CatEmbLayer(train_cont['cat_s']["day_cat"], day_dim, day_cat_input)
+param1_emb = CatEmbLayer(train_cont['cat_s']["param_1"], param_1_dim, param_1_input)
+param2_emb = CatEmbLayer(train_cont['cat_s']["param_2"], param_2_dim, param_2_input)
+param3_emb = CatEmbLayer(train_cont['cat_s']["param_3"], param_3_dim, param_3_input)
 
 m = concatenate([category_emb,
                  parent_cat_emb,
@@ -129,6 +139,9 @@ m = concatenate([category_emb,
                  image_cat_emb,
                  user_cat_emb,
                  day_cat_emb,
+                 param1_emb,
+                 param2_emb,
+                 param3_emb,
                  other_feat_input,
                  m], axis = 1)
 
@@ -143,11 +156,12 @@ m = Dense(conf.modelling.second_dense, activation='relu', kernel_regularizer=reg
 output = Dense(1)(m)
 
 inputs = [category_input, parent_cat_input, region_cat_input, city_cat_input, image_cat_input, user_cat_input,
-          day_cat_input, other_feat_input, text_input]
+          day_cat_input,param_1_input, param_2_input, param_3_input,  other_feat_input, text_input]
 
 model = Model(inputs=inputs , 
               outputs= output,
               name='sec_model')
+print(model.summary())
 
 adam = optimizers.Adam(lr=conf.optimizer.lr, beta_1=conf.optimizer.beta_1,
                        beta_2=conf.optimizer.beta_2,
@@ -163,7 +177,8 @@ model.compile(loss='mean_squared_error', #mean squared error might drop to 0 fas
 
 data = train_cont['cat_d']['cat_data'] + train_cont['cat_d']["parent_data"] +\
        train_cont['cat_d']["region_data"] + train_cont['cat_d']["city_data"] + train_cont['cat_d']["image_data"] +\
-       train_cont['cat_d']["user_data"] + train_cont['cat_d']["day_data"] + train_cont["other_feat"]  + \
+       train_cont['cat_d']["user_data"] + train_cont['cat_d']["day_data"]+ train_cont['cat_d']["param_1"] +\
+       train_cont['cat_d']["param_2"] + train_cont['cat_d']["param_3"] + train_cont["other_feat"]  + \
        [padded_words] 
 
 hist = model.fit(data,
@@ -180,7 +195,8 @@ hist = model.fit(data,
 preds = model.predict(
                  test_cont['cat_d']['cat_data'] + test_cont['cat_d']["parent_data"] +\
                  test_cont['cat_d']["region_data"] + test_cont['cat_d']["city_data"] + test_cont['cat_d']["image_data"] +\
-                 test_cont['cat_d']["user_data"] + test_cont['cat_d']["day_data"] + test_cont["other_feat"]  + \
+                 test_cont['cat_d']["user_data"] + test_cont['cat_d']["day_data"] +  test_cont['cat_d']["param_1"] +\
+                 test_cont['cat_d']["param_2"] + test_cont['cat_d']["param_3"] + test_cont["other_feat"]  + \
                  [padded_test] ,
 )
 

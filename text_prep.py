@@ -7,6 +7,7 @@ import pandas as pd
 from collections import Counter
 from keras.preprocessing import sequence, text
 from nltk.tokenize.toktok import ToktokTokenizer # tokenizer tested on russian
+from nltk.stem.snowball import RussianStemmer
 from nltk import sent_tokenize # should be multilingual
 from string import punctuation
 from nltk import sent_tokenize
@@ -40,7 +41,7 @@ class Preparator():
 
 
 
-    def clean_col(self, column, data):
+    def clean_col(self, column, data, stem = False):
         punct = "!#$«%&\'.()*+-<=>?@[\\]^_`°{|}"
         spec = "/\n"
         digits = "\d"
@@ -48,10 +49,18 @@ class Preparator():
         regexspec = re.compile('[%s]' % re.escape(spec))
         digits = re.compile(digits)
         toktok = ToktokTokenizer()
-        res = data[column].fillna("__NA__").map(lambda sent: regex.sub("", sent))\
-                                            .map(lambda sent: digits.sub("#", sent))\
-                                            .map(lambda sent: regexspec.sub(" ", sent))\
-                                            .map(lambda sent: toktok.tokenize(sent.lower())).tolist()
+        rs = RussianStemmer(ignore_stopwords= True)
+        if stem:
+            res = data[column].fillna("__NA__").map(lambda sent: regex.sub("", sent))\
+                                    .map(lambda sent: digits.sub("#", sent))\
+                                    .map(lambda sent: regexspec.sub(" ", sent))\
+                                    .map(lambda sent: rs.stem(sent))\
+                                    .map(lambda sent: toktok.tokenize(sent.lower())).tolist()
+        else:                     
+            res = data[column].fillna("__NA__").map(lambda sent: regex.sub("", sent))\
+                                                .map(lambda sent: digits.sub("#", sent))\
+                                                .map(lambda sent: regexspec.sub(" ", sent))\
+                                                .map(lambda sent: toktok.tokenize(sent.lower())).tolist()
         return res
 
 
